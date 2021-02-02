@@ -85,7 +85,7 @@ def main():
         axs.set_xlabel('n (elements)')
 
         print("Worst case. Elements presorted wrong way")
-        n_step = 10
+        n_step = 1000
         x = []
         y = []
         for n in range(n_step, n_step*10, n_step):
