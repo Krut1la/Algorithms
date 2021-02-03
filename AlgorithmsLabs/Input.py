@@ -116,7 +116,7 @@ def get_input_source(task_name):
     if source_type == 1:
         return KeyboardInput()
     elif source_type == 2:
-        return FileInput("../venv/input_files/{}_input.txt".format(task_name))
+        return FileInput("input_files/{}_input.txt".format(task_name))
 
 
 def get_option(text, count):
