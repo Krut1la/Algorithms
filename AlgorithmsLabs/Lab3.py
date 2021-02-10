@@ -180,14 +180,14 @@ def get_delta_n(x, x_nodes, func):
     delta_n = 0.0
 
     for j in range(0, n):
-        sigma_j = func(x_nodes[j])
+        sigma_j = func(x_nodes[j]) * 1e-15
         A_j = 1.0
 
         for i in range(0, n):
             if i == j:
                 continue
 
-            A_j = A_j * (x - x_nodes[i]) / (x_nodes[j] - x_nodes[i])
+            A_j = A_j * math.fabs((x - x_nodes[i]) / (x_nodes[j] - x_nodes[i]))
 
         delta_n = delta_n + sigma_j * A_j
 
@@ -210,23 +210,37 @@ def analyze_func(a, b, m, func, axs):
     coefficients = poly_newton_coefficient(x_nodes, y_nodes)
 
     # y_interpolated = generate_interpolated_y_range(x_nodes, x_range, coefficients)
-    y_interpolated = generate_interpolated_y_range_lagrange(x_nodes, y_nodes, x_range)
+    y_interpolated = generate_interpolated_y_range_lagrange(x_nodes[:4], y_nodes[:4], x_range)
 
     axs[0, 1].plot(x_range, y_interpolated, color='red')
 
     # draw error
     j = 2
 
-    for n in range(1, m):
-        x_nodes_test = x_nodes[:n + 1]
-        y_nodes_test = y_nodes[:n + 1]
+    k = 2
+    for n in range(1, 20 - k):
+        # k = m // 2 - n // 2
+
+
+        x_nodes_test = x_nodes[k:n + k + 1]
+        y_nodes_test = y_nodes[k:n + k + 1]
+
+        x_nodes_plus_1 = x_nodes[k:n + k + 2]
+        y_nodes_plus_1 = y_nodes[k:n + k + 2]
+
+        # x_nodes_test = x_nodes[k:k + n + 1]
+        # y_nodes_test = y_nodes[k:k + n + 1]
+
+        # if len(x_nodes_test) != n + 1:
+        #    raise Exception("wrong")
         coefficients_test = poly_newton_coefficient(x_nodes_test, y_nodes_test)
 
-        x_nodes_plus_1 = x_nodes[:n + 1 + 1]
-        y_nodes_plus_1 = y_nodes[:n + 1 + 1]
+        # x_nodes_plus_1 = x_nodes[k:k + n + 2]
+        # y_nodes_plus_1 = y_nodes[k:k + n + 2]
+
         coefficients_plus_1 = poly_newton_coefficient(x_nodes_plus_1, y_nodes_plus_1)
 
-        x_range_test = generate_x_range(x_nodes[j], x_nodes[j + 1], 100)
+        x_range_test = generate_x_range(x_nodes[j], x_nodes[j + 1], 1000)
 
         x_error = []
         y_error_polynomial = []
@@ -241,12 +255,14 @@ def analyze_func(a, b, m, func, axs):
                 Px = interpolate(x, x_nodes_test, y_nodes_test)
                 P_1x = interpolate(x, x_nodes_plus_1, y_nodes_plus_1)
                 Fx = func(x)
-                delta_n = get_delta_n(x, x_nodes_test, func)
-                delta_n_1 = get_delta_n(x, x_nodes_plus_1, func)
 
                 log_delta_P_P1 = -math.log(math.fabs(Px - P_1x), 10)
                 log_delta_P_func = -math.log(math.fabs(Px - Fx), 10)
-                log_func_float = -math.log(math.fabs(delta_n - delta_n_1), 10)
+
+                delta_n = get_delta_n(x, x_nodes_test, func)
+                # delta_n_1 = get_delta_n(x, x_nodes_plus_1, func) - P_1x
+
+                log_func_float = -math.log(math.fabs(delta_n), 10)
             except ValueError:
                 pass
             else:
@@ -281,7 +297,7 @@ def main():
 
     # sin(x)
     a = 0.0
-    b = math.pi / 2
+    b = math.pi/2
     m = 20
 
     def sin_x(arg):
