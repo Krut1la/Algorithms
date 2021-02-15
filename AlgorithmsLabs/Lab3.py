@@ -308,9 +308,9 @@ def analyze_func(a, b, m, j, func, interpolator_type, axs_page1, axs_page2):
 
         if n < 10:
             axs_page2[0, 0].annotate('n={}'.format(n),
-                               xy=(x_error[len(x_error) - 1], y_error_polynomial[len(y_error_polynomial) - 1]),
+                               xy=(x_error[2*len(x_error)//3], y_error_polynomial[2*len(y_error_polynomial)//3]),
                                xycoords='data', xytext=(1.1, 0.1 * n), textcoords='axes fraction', fontsize=8,
-                               color='gray', arrowprops=dict(color='gray', shrink=0.05, width=0.01, headwidth=0.2),
+                               color='gray', arrowprops=dict(color='green', shrink=0.05, width=0.01, headwidth=0.2),
                                horizontalalignment='right', verticalalignment='top',
                                )
         axs_page2[0, 1].plot(x_error, y_error_func, color='black')
@@ -361,8 +361,8 @@ def main():
 
     analyze_func(a, b, m, j, func, interpolator, axs_page1, axs_page2)
 
-    # fig_page2.savefig("E:\Krut1la\KPI\Grade 2\Part 2\Algorithms\Labs\Lab3\lab3_sin_fig_4.png")
-    # fig_page1.savefig("E:\Krut1la\KPI\Grade 2\Part 2\Algorithms\Labs\Lab3\lab3_sin_fig_3.png")
+    # fig_page2.savefig("E:\Krut1la\KPI\Grade 2\Part 2\Algorithms\Labs\Lab3\lab3_sin_fig_1.png")
+    # fig_page1.savefig("E:\Krut1la\KPI\Grade 2\Part 2\Algorithms\Labs\Lab3\lab3_sin_fig_2.png")
 
     plt.show()
 
