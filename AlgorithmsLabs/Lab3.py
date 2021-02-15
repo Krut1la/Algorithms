@@ -4,115 +4,130 @@ Auth:   Oleksii Krutko, IO-z91
 Desc:   Algorithms Lab 3. Var 10. 2021
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
 import math
-from functools import reduce
-import operator
-
-from pip._vendor.urllib3.connectionpool import xrange
+from Input import get_input_source, get_option
 
 
-def interpolate(x, x_values, y_values):
-    def _basis(j):
-        p = [(x - x_values[m])/(x_values[j] - x_values[m]) for m in xrange(k) if m != j]
-        return reduce(operator.mul, p)
-    assert len(x_values) != 0 and (len(x_values) == len(y_values)), 'x and y cannot be empty and must have the same length'
-    k = len(x_values)
-    return sum(_basis(j)*y_values[j] for j in xrange(k))
+class Interpolator(object):
+    def __init__(self, x_nodes, y_nodes):
+        """
+        :param x_nodes: x values in nodes
+        :param y_nodes: y values in nodes
+        """
+        self._x_nodes = x_nodes
+        self._y_nodes = y_nodes
+
+    @classmethod
+    def get_method_name(cls):
+        pass
+
+    def interpolate(self, x):
+        """
+        Evaluates polynomial in x point
+        :param x: point to evaluate
+        :return: y value
+        """
+        pass
+
+    def generate_y_range(self, x_range):
+        """
+
+        """
+        y = []
+        for x in x_range:
+            y.append(self.interpolate(x))
+
+        return y
 
 
-def poly_newton_coefficient(x, y):
-    m = len(x)
+class InterpolatorLagrange(Interpolator):
+    def __init__(self, x_nodes, y_nodes):
+        super(InterpolatorLagrange, self).__init__(x_nodes, y_nodes)
 
-    x = np.copy(x)
-    a = np.copy(y)
-    for k in range(1, m):
-        a[k:m] = (a[k:m] - a[k - 1]) / (x[k:m] - x[k - 1])
+    @classmethod
+    def get_method_name(cls):
+        return "Lagrange"
 
-    return a
+    def interpolate(self, x):
+        n = len(self._x_nodes)
 
-
-def __poly_newton_coefficient(x_nodes, y_nodes):
-    """
-    Cals coefficients of Newton polynomial using the general formula (1.6)
-    :param x_nodes: x values in nodes
-    :param y_nodes: y values in nodes
-    :return: array of coefficients
-    """
-    m = len(x_nodes)
-
-    coefficients = []
-
-    for n in range(1, m + 1):
-        S = 0
+        S = 0.0
         for j in range(1, n + 1):
-            P = 1
+            P = 1.0
+
             for i in range(1, n + 1):
                 if i == j:
                     continue
 
-                P = P * (x_nodes[j - 1] - x_nodes[i - 1])
+                P = P * (x - self._x_nodes[i - 1]) / (self._x_nodes[j - 1] - self._x_nodes[i - 1])
 
-            S = S + y_nodes[j - 1] / P
+            S = S + P * self._y_nodes[j - 1]
 
-        coefficients.append(S)
-
-    return coefficients
+        return S
 
 
-def newton_polynomial(x_nodes, x, coefficients):
-    """
-    Evaluates Newton polynomial in x point
-    :param x_nodes: x values in nodes
-    :param x: point to evaluate
-    :param coefficients: Newton polynomial coefficients
-    :return: y value
-    """
-    n = len(x_nodes) - 1
-    p = coefficients[n]
-    for k in range(1, n + 1):
-        p = coefficients[n - k] + (x - x_nodes[n - k]) * p
-    return p
+class InterpolatorNewton(Interpolator):
+    def __init__(self, x_nodes, y_nodes):
+        super(InterpolatorNewton, self).__init__(x_nodes, y_nodes)
+        self.method_name = "Newton"
+        self.__end_diffs = self.__get_poly_newton_end_diffs()
+
+    @classmethod
+    def get_method_name(cls):
+        return "Newton"
+
+    def __get_poly_newton_end_diffs(self):
+        """
+        Cals end diffs of Newton polynomial using the general formula (1.6)
+        :return: array of coefficients
+        """
+        m = len(self._x_nodes)
+
+        end_diffs = []
+
+        for n in range(1, m + 1):
+            S = 0
+            for j in range(1, n + 1):
+                P = 1
+                for i in range(1, n + 1):
+                    if i == j:
+                        continue
+
+                    P = P * (self._x_nodes[j - 1] - self._x_nodes[i - 1])
+
+                S = S + self._y_nodes[j - 1] / P
+
+            end_diffs.append(S)
+
+        return end_diffs
+
+    def interpolate(self, x):
+        n = len(self._x_nodes) - 1
+        p = self.__end_diffs[n]
+        for k in range(1, n + 1):
+            p = self.__end_diffs[n - k] + (x - self._x_nodes[n - k]) * p
+
+        return p
 
 
-def generate_interpolated_y_range(x_nodes, x_range, a):
-    y = []
-    for x in x_range:
-        y.append(newton_polynomial(x_nodes, x, a))
+def get_delta_n(x, x_nodes, func):
+    n = len(x_nodes)
+    delta_n = 0.0
 
-    return y
+    for j in range(0, n):
+        sigma_j = math.fabs(func(x_nodes[j])) * 1e-15
+        A_j = 1.0
 
+        for i in range(0, n):
+            if i == j:
+                continue
 
-def generate_interpolated_y_range_lagrange(x_nodes, y_nodes, x_range):
-    y = []
-    for x in x_range:
-        y.append(interpolate(x, x_nodes, y_nodes))
+            A_j = A_j * math.fabs((x - x_nodes[i]) / (x_nodes[j] - x_nodes[i]))
 
-    return y
+        delta_n = delta_n + sigma_j * A_j
 
-
-
-
-def generate_nodes(a, b, n):
-    """
-    Calculates n equidistant points for given function between a and b.
-    Var 10. f(x) = cos(x + e^cos(x)
-    :param a: start of range
-    :param b: and of range
-    :param n: number of nodes
-    :return: arrays of n x and n y values in nodes
-    """
-    x = []
-    y = []
-    step = (b - a) / n
-
-    for i in range(0, n):
-        xi = a + i * step
-        x.append(xi)
-        y.append(math.cos(xi + math.exp(math.cos(xi))))
-
-    return x, y
+    return delta_n
 
 
 def generate_x_range(a, b, m):
@@ -131,116 +146,135 @@ def generate_y_range(x_range, func):
     return y
 
 
-def create_axs(func_expression):
-    fig, axs = plt.subplots(2, 4)
-    fig.canvas.set_window_title('Lab 3. Newton polynomial. Var. 10')
-    axs[0, 0].set_title('Precise')
-    axs[0, 0].set_ylabel(func_expression)
-    axs[0, 0].set_xlabel('x')
-    axs[0, 0].grid()
+def create_axs(method_name, func_expression, a, b, m, j):
+    # A4 page
+    fig_width_cm = 21
+    fig_height_cm = 29.7
 
-    axs[0, 1].set_title('Interpolated')
-    axs[0, 1].set_ylabel('Pn(x)')
-    axs[0, 1].set_xlabel('x')
-    axs[0, 1].grid()
+    extra_margin_cm = 1
+    margin_left_cm = 2 + extra_margin_cm
+    margin_right_cm = 1.0
+    margin_bottom_cm = 1.0 + extra_margin_cm
+    margin_top_cm = 3.0 + extra_margin_cm
+    inches_per_cm = 1 / 2.54
 
-    axs[0, 2].set_title('Error')
-    axs[0, 2].set_ylabel('-lg|Pn(x) - Pn+1(x)|')
-    axs[0, 2].set_xlabel('x_m')
-    axs[0, 2].grid()
+    fig_width = fig_width_cm * inches_per_cm  # width in inches
+    fig_height = fig_height_cm * inches_per_cm  # height in inches
 
-    axs[0, 3].set_title('Error precise')
-    axs[0, 3].set_ylabel('-lg|Pn(x) - f(x)|')
-    axs[0, 3].set_xlabel('x_m')
-    axs[0, 3].grid()
+    margin_left = margin_left_cm * inches_per_cm
+    margin_right = margin_right_cm * inches_per_cm
+    margin_bottom = margin_bottom_cm * inches_per_cm
+    margin_top = margin_top_cm * inches_per_cm
 
-    axs[1, 0].set_title('Error evaluation')
-    axs[1, 0].set_ylabel('-lg|Pn(x) - Pn+1(x)|')
-    axs[1, 0].set_xlabel('x_m')
-    axs[1, 0].grid()
+    left_margin = margin_left / fig_width
+    right_margin = 1 - margin_right / fig_width
+    bottom_margin = margin_bottom / fig_height
+    top_margin = 1 - margin_top / fig_height
 
-    axs[1, 1].set_title('Error evaluation precise')
-    axs[1, 1].set_ylabel('-lg|Pn(x) - f(x)|')
-    axs[1, 1].set_xlabel('x_m')
-    axs[1, 1].grid()
+    fig_size = [fig_width, fig_height]
 
-    axs[1, 2].set_title('sin(x)')
-    axs[1, 2].set_ylabel('f(x)')
-    axs[1, 2].set_xlabel('x')
+    plt.rc('figure', figsize=fig_size)
 
-    axs[1, 3].set_title('sin(x)')
-    axs[1, 3].set_ylabel('f(x)')
-    axs[1, 3].set_xlabel('x')
+    fig_page1, axs_page1 = plt.subplots(2, 1)
+    fig_page1.suptitle(method_name + ' interpolation method results: ' + func_expression +
+                       '\n a={:.2f}, b={:.2f}, m={}, j={}'.format(a, b, m, j),
+                       fontsize=16, style='normal')
+    fig_page1.subplots_adjust(left=left_margin, right=right_margin, top=top_margin, bottom=bottom_margin,
+                              wspace=0.3, hspace=0.2)
+    fig_page1.canvas.set_window_title('Lab 3. Polynomial interpolation. Var. 10')
+    axs_page1[0].set_title('Precise: ' + r'$f(x)=$' + func_expression, fontsize=12, color='gray')
+    axs_page1[0].set_ylabel(r'$f(x)$', rotation=0, loc='top', fontsize=10, color='gray')
+    axs_page1[0].set_xlabel(r'$x$', fontsize=10, loc='right', color='gray')
+    axs_page1[0].grid()
 
-    return axs
+    axs_page1[1].set_title('Nodes, interpolated', fontsize=12, color='gray')
+    axs_page1[1].set_ylabel(r'$P_{{{n}}}(x)$'.format(n=m), rotation=0, loc='top', fontsize=10, color='gray')
+    axs_page1[1].set_xlabel(r'$x$', fontsize=10, style='italic', loc='right', color='gray')
+    axs_page1[1].grid()
+
+    fig_page2, axs_page2 = plt.subplots(2, 2)
+    fig_page2.suptitle(method_name + ' interpolation method error evaluation: ' + func_expression +
+                       '\n a={:.2f}, b={:.2f}, m={}, j={}'.format(a, b, m, j),
+                       fontsize=16, style='normal')
+    fig_page2.subplots_adjust(left=left_margin, right=right_margin, top=top_margin, bottom=bottom_margin,
+                              wspace=0.3, hspace=0.3)
+    fig_page2.canvas.set_window_title('Lab 3. Polynomial interpolation. Var. 10')
+
+    axs_page2[0, 0].set_title('Error: ' + r'$\Delta_{n}=P_{n}(x) - P_{n+1}(x)$', fontsize=12, color='gray')
+    axs_page2[0, 0].set_ylabel(r'$-lg|\Delta_{n}|$', rotation=0, loc='top', fontsize=8, color='gray')
+    axs_page2[0, 0].set_xlabel(r'$\overline{x}=\frac{x-x_{j}}{x_{j+1}-x_{j}}$', fontsize=10, loc='right', color='gray')
+    axs_page2[0, 0].grid()
+
+    axs_page2[0, 1].set_title('Error: ' + r'$\Delta_{n}=P_{n}(x) - f(x)$', fontsize=12, color='gray')
+    axs_page2[0, 1].set_ylabel(r'$-lg|\Delta_{n}|$', rotation=0, loc='top', fontsize=8, color='gray')
+    axs_page2[0, 1].set_xlabel(r'$\overline{x}=\frac{x-x_{j}}{x_{j+1}-x_{j}}$', fontsize=10, loc='right', color='gray')
+    axs_page2[0, 1].grid()
+
+    axs_page2[1, 0].set_title('FP error: ' + r'$\sigma=$' + func_expression + r'$10^{-15}$', fontsize=12, color='gray')
+    axs_page2[1, 0].set_ylabel(r'$-lg|\Delta_{n}|$', rotation=0, loc='top', fontsize=10, color='gray')
+    axs_page2[1, 0].set_xlabel(r'$\overline{x}=\frac{x-x_{j}}{x_{j+1}-x_{j}}$', fontsize=10, loc='right', color='gray')
+    axs_page2[1, 0].set_ylim([0.0, 15.0])
+    axs_page2[1, 0].grid()
+
+    axs_page2[1, 1].set_title('Table', fontsize=12, color='gray')
+
+    return axs_page1, axs_page2, fig_page1, fig_page2
 
 
-def get_delta_n(x, x_nodes, func):
-    n = len(x_nodes)
-    delta_n = 0.0
+def analyze_func(a, b, m, j, func, interpolator_type, axs_page1, axs_page2):
+    x_points = 300
 
-    for j in range(0, n):
-        sigma_j = func(x_nodes[j]) * 1e-15
-        A_j = 1.0
-
-        for i in range(0, n):
-            if i == j:
-                continue
-
-            A_j = A_j * math.fabs((x - x_nodes[i]) / (x_nodes[j] - x_nodes[i]))
-
-        delta_n = delta_n + sigma_j * A_j
-
-    return delta_n
-
-
-def analyze_func(a, b, m, func, axs):
     # draw original func
     x_range = generate_x_range(a, b, 1000)
     y_range = generate_y_range(x_range, func)
 
-    axs[0, 0].plot(x_range, y_range, color='green')
+    axs_page1[0].plot(x_range, y_range, color='green')
 
-    # draw polynomial
+    # draw nodes
     x_nodes = generate_x_range(a, b, m)
     y_nodes = generate_y_range(x_nodes, func)
 
-    axs[0, 1].plot(x_nodes, y_nodes, 'ro', color='blue')
+    x_middle = x_nodes[j] + (x_nodes[j + 1] - x_nodes[j]) / 2
 
-    coefficients = poly_newton_coefficient(x_nodes, y_nodes)
+    axs_page1[1].plot(x_nodes, y_nodes, 'ro', color='blue')
 
-    # y_interpolated = generate_interpolated_y_range(x_nodes, x_range, coefficients)
-    y_interpolated = generate_interpolated_y_range_lagrange(x_nodes[:4], y_nodes[:4], x_range)
+    # draw polynomial
 
-    axs[0, 1].plot(x_range, y_interpolated, color='red')
+    p_m = interpolator_type(x_nodes, y_nodes)
+
+    y_interpolated = p_m.generate_y_range(x_range)
+
+    axs_page1[1].plot(x_range, y_interpolated, color='red')
+
+    axs_page1[1].axvspan(x_nodes[j], x_nodes[j + 1], alpha=0.5, color='yellow')
+    axs_page1[1].axvspan(x_middle, x_middle, alpha=0.5, color='blue')
 
     # draw error
-    j = 2
 
-    k = 2
-    for n in range(1, 20 - k):
-        # k = m // 2 - n // 2
+    k = j
+    table_data = [["" for j in range(4)] for i in range(m - k - 1)]
+    for n in range(1, m - k):
 
+        table_data[n - 1][0] = "{}".format(n)
 
-        x_nodes_test = x_nodes[k:n + k + 1]
-        y_nodes_test = y_nodes[k:n + k + 1]
+        x_nodes_n = x_nodes[k:n + k + 1]
+        y_nodes_n = y_nodes[k:n + k + 1]
 
-        x_nodes_plus_1 = x_nodes[k:n + k + 2]
-        y_nodes_plus_1 = y_nodes[k:n + k + 2]
+        x_nodes_n_1 = x_nodes[k:n + k + 2]
+        y_nodes_n_1 = y_nodes[k:n + k + 2]
 
-        # x_nodes_test = x_nodes[k:k + n + 1]
-        # y_nodes_test = y_nodes[k:k + n + 1]
+        p_n = interpolator_type(x_nodes_n, y_nodes_n)
+        p_n_1 = interpolator_type(x_nodes_n_1, y_nodes_n_1)
 
-        # if len(x_nodes_test) != n + 1:
-        #    raise Exception("wrong")
-        coefficients_test = poly_newton_coefficient(x_nodes_test, y_nodes_test)
+        p_n_y_middle = p_n.interpolate(x_middle)
+        p_n_1_y_middle = p_n_1.interpolate(x_middle)
+        f_y_middle = func(x_middle)
 
-        # x_nodes_plus_1 = x_nodes[k:k + n + 2]
-        # y_nodes_plus_1 = y_nodes[k:k + n + 2]
+        table_data[n - 1][1] = "{:e}".format(p_n_y_middle - p_n_1_y_middle)
+        table_data[n - 1][2] = "{:e}".format(p_n_y_middle - f_y_middle)
+        table_data[n - 1][3] = "{:.2f}".format(1 - (p_n_y_middle - f_y_middle)/(p_n_y_middle - p_n_1_y_middle))
 
-        coefficients_plus_1 = poly_newton_coefficient(x_nodes_plus_1, y_nodes_plus_1)
-
-        x_range_test = generate_x_range(x_nodes[j], x_nodes[j + 1], 1000)
+        x_range_test = generate_x_range(x_nodes[j], x_nodes[j + 1], x_points)
 
         x_error = []
         y_error_polynomial = []
@@ -250,70 +284,85 @@ def analyze_func(a, b, m, func, axs):
             try:
                 xp = (x - x_nodes[j]) / (x_nodes[j + 1] - x_nodes[j])
 
-                # Px = newton_polynomial(x_nodes_test, x, coefficients_test)
-                # P_1x = newton_polynomial(x_nodes_plus_1, x, coefficients_plus_1)
-                Px = interpolate(x, x_nodes_test, y_nodes_test)
-                P_1x = interpolate(x, x_nodes_plus_1, y_nodes_plus_1)
-                Fx = func(x)
+                p_n_y = p_n.interpolate(x)
+                p_n_1_y = p_n_1.interpolate(x)
+                f_y = func(x)
 
-                log_delta_P_P1 = -math.log(math.fabs(Px - P_1x), 10)
-                log_delta_P_func = -math.log(math.fabs(Px - Fx), 10)
+                log_delta_p_p_1 = -math.log(math.fabs(p_n_y - p_n_1_y), 10)
+                log_delta_p_func = -math.log(math.fabs(p_n_y - f_y), 10)
 
-                delta_n = get_delta_n(x, x_nodes_test, func)
-                # delta_n_1 = get_delta_n(x, x_nodes_plus_1, func) - P_1x
+                delta_n = get_delta_n(x, x_nodes_n, func)
 
                 log_func_float = -math.log(math.fabs(delta_n), 10)
             except ValueError:
                 pass
             else:
                 x_error.append(xp)
-                y_error_polynomial.append(log_delta_P_P1)
-                y_error_func.append(log_delta_P_func)
+                y_error_polynomial.append(log_delta_p_p_1)
+                y_error_func.append(log_delta_p_func)
                 y_error_func_float.append(log_func_float)
 
-        axs[0, 2].plot(x_error, y_error_polynomial, color='black')
-        axs[0, 2].annotate(j, xy=(0, 0), xycoords='data',
-                           xytext=(0.0, 0.0), textcoords='axes fraction',
-                           arrowprops=dict(facecolor='black', shrink=0.05),
-                           horizontalalignment='right', verticalalignment='top',
-                           )
-        axs[0, 3].plot(x_error, y_error_func, color='black')
-        axs[1, 0].plot(x_error, y_error_func_float, color='black')
+        # draw error evaluation
+        axs_page2[0, 0].plot(x_error, y_error_polynomial, color='black')
+        axs_page2[0, 0].axvspan(0.5, 0.5, alpha=0.5, color='blue')
 
-    # draw error evaluation
+        if n < 10:
+            axs_page2[0, 0].annotate('n={}'.format(n),
+                               xy=(x_error[len(x_error) - 1], y_error_polynomial[len(y_error_polynomial) - 1]),
+                               xycoords='data', xytext=(1.1, 0.1 * n), textcoords='axes fraction', fontsize=8,
+                               color='gray', arrowprops=dict(color='gray', shrink=0.05, width=0.01, headwidth=0.2),
+                               horizontalalignment='right', verticalalignment='top',
+                               )
+        axs_page2[0, 1].plot(x_error, y_error_func, color='black')
+        axs_page2[0, 1].axvspan(0.5, 0.5, alpha=0.5, color='blue')
+        axs_page2[1, 0].plot(x_error, y_error_func_float, color='black')
+        axs_page2[1, 0].axvspan(0.5, 0.5, alpha=0.5, color='blue')
 
     # draw table
-    axs[1, 2].axis('tight')
-    axs[1, 2].axis('off')
-    clust_data = np.random.random((10, 4))
-    col_label = ("n", "Dn", "Dn Exact", "k")
-    the_table = axs[1, 2].table(cellText=clust_data, colLabels=col_label, loc='center')
+    axs_page2[1, 1].axis('off')
+    col_label = (r'$n$', r'$\Delta_{n}$', r'$\Delta_{n}exact$', r'$k$')
+    the_table = axs_page2[1, 1].table(cellText=table_data, colLabels=col_label, loc='center')
+    the_table.set_fontsize(20)
+    the_table.scale(1.0, 1.35)
 
 
 def main():
-    print("Lab 3. Newton polynomial. Var. 10")
+    print("Lab 3. Polynomial interpolation. Var. 10")
 
-    axs = create_axs("cos(x + e^cos(x))")
-
-    # sin(x)
-    a = 0.0
-    b = math.pi/2
-    m = 20
+    option_func = get_option("Select function (1 - sin(x), 2 - cos(x + e^cos(x)):", 2)
+    option_method = get_option("Select polynomial (1 - Lagrange, 2 - Newton:", 2)
 
     def sin_x(arg):
         return math.sin(arg)
 
-    analyze_func(a, b, m, sin_x, axs)
+    def v_10(arg):
+        return math.cos(arg + math.exp(math.cos(arg)))
 
-    # cos(x + e^cos(x))
-    # a = 3
-    # b = 6
-    # m = 10
-    #
-    # def sin_x(arg):
-    #     return math.sin(arg)
-    #
-    # analyze_func(a, b, m, sin_x, axs)
+    if option_func == 1:
+        func = sin_x
+        func_expression = r'$sin(x)$'
+        input_source = get_input_source("lab3_sin_interpolation")
+    else:
+        func = v_10
+        func_expression = r'$cos(x + e^{cos(x)})$'
+        input_source = get_input_source("lab3_v_10_interpolation")
+
+    if option_method == 1:
+        interpolator = InterpolatorLagrange
+    else:
+        interpolator = InterpolatorNewton
+
+    a = input_source.read_var("a", float, float("-inf"), float("inf"))
+    b = input_source.read_var("b", float, a, float("inf"))
+    m = input_source.read_var("m", int, 5, 20)
+    j = input_source.read_var("j", int, 0, m - 1)
+
+    axs_page1, axs_page2, fig_page1, fig_page2 = create_axs(interpolator.get_method_name(), func_expression, a, b, m, j)
+
+    analyze_func(a, b, m, j, func, interpolator, axs_page1, axs_page2)
+
+    # fig_page2.savefig("E:\Krut1la\KPI\Grade 2\Part 2\Algorithms\Labs\Lab3\lab3_sin_fig_4.png")
+    # fig_page1.savefig("E:\Krut1la\KPI\Grade 2\Part 2\Algorithms\Labs\Lab3\lab3_sin_fig_3.png")
 
     plt.show()
 
