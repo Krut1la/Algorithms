@@ -309,11 +309,11 @@ def main():
         print("Error wile reading data from file: ", ir)
         return
 
-    # test_equation = (-3.0, -7.0, 8.0, -5.0, 2.0, 1.0)
+    test_equation = (-3.0, -7.0, 8.0, -5.0, 2.0, 1.0)
     # test_equation_no_roots = (3.0, 7.0, 8.0, 5.0, 2.0, 0.0, 1.0)
 
-    equation = a
-    # equation = test_equation
+    # equation = a
+    equation = test_equation
     # equation = test_equation_no_roots
     first_drv_equation = drv_alg_equation(equation)
     second_drv_equation = drv_alg_equation(first_drv_equation)
@@ -390,6 +390,8 @@ def main():
     the_table.scale(1.0, 1.35)
 
     plt.show()
+
+    # fig_page1.savefig("input_files/lab4_2.png")
 
 
 main()
